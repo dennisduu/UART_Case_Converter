@@ -22,27 +22,27 @@ project:
 # The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
 pinout:
   # Inputs
-  ui[0]: "a[0]"
-  ui[1]: "a[1]"
-  ui[2]: "a[2]"
-  ui[3]: "a[3]"
-  ui[4]: "b[0]"
-  ui[5]: "b[1]"
-  ui[6]: "b[2]"
-  ui[7]: "b[3]"
+  ui[0]: "a"
+  ui[1]: ""
+  ui[2]: ""
+  ui[3]: ""
+  ui[4]: ""
+  ui[5]: ""
+  ui[6]: ""
+  ui[7]: ""
 
   # Outputs
-  uo[0]: "sum[0]"
-  uo[1]: "sum[1]"
-  uo[2]: "sum[2]"
-  uo[3]: "sum[3]"
-  uo[4]: "carry_out"
+  uo[0]: "tx"
+  uo[1]: ""
+  uo[2]: ""
+  uo[3]: ""
+  uo[4]: ""
   uo[5]: ""
   uo[6]: ""
   uo[7]: ""
 
   # Bidirectional pins
-  uio[0]: ""
+  uio[0]: "rx"
   uio[1]: ""
   uio[2]: ""
   uio[3]: ""
