@@ -1,51 +1,116 @@
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles
-import random
+from cocotb.triggers import RisingEdge, FallingEdge, Timer, ReadOnly
+from cocotb.result import TestFailure
+
+# UART parameters
+CLK_FREQ = 50000000     # 50 MHz clock frequency
+BAUD_RATE = 9600        # UART baud rate
+CLK_PERIOD = 1e9 / CLK_FREQ   # Clock period in ns
+BAUD_PERIOD = 1e9 / BAUD_RATE # Baud period in ns
+
+# UART Transmission Task (send data to DUT's RX input)
+async def uart_tx(dut, data):
+    """Simulate UART transmission to the DUT's RX input."""
+    # Build the frame: start bit (0), data bits (LSB first), stop bit (1)
+    frame = [0]  # Start bit
+    for i in range(8):
+        frame.append((data >> i) & 1)
+    frame.append(1)  # Stop bit
+
+    # Send the frame
+    for bit in frame:
+        dut.rx_serial <= bit
+        await Timer(BAUD_PERIOD, units='ns')
+
+    # Ensure the line stays idle after transmission
+    dut.rx_serial <= 1
+    await Timer(BAUD_PERIOD, units='ns')
+
+# UART Reception Task (receive data from DUT's TX output)
+async def uart_rx(dut):
+    """Simulate UART reception from the DUT's TX output."""
+    # Wait for start bit (logic low)
+    await FallingEdge(dut.tx_serial)
+    # Wait half a baud period to sample in the middle of the bit
+    await Timer(BAUD_PERIOD / 2, units='ns')
+
+    # Read data bits
+    data = 0
+    for i in range(8):
+        await Timer(BAUD_PERIOD, units='ns')
+        bit = dut.tx_serial.value.integer
+        data |= (bit << i)
+
+    # Wait for stop bit
+    await Timer(BAUD_PERIOD, units='ns')
+    stop_bit = dut.tx_serial.value.integer
+    if stop_bit != 1:
+        raise TestFailure("Stop bit not detected")
+
+    return data
 
 @cocotb.test()
-async def test_project(dut):
-    dut._log.info("Start")
+async def uart_capitalizer_test(dut):
+    """Test the UART capitalizer design."""
+    # Generate clock
+    cocotb.start_soon(Clock(dut.clk, CLK_PERIOD, units='ns').start())
 
-    # Set the clock period to 10 us (100 KHz)
-    clock = Clock(dut.clk, 10, units="us")
-    cocotb.start_soon(clock.start())
+    # Apply reset
+    dut.rst_n <= 0
+    dut.ena <= 1       # Enable the design
+    dut.rx_serial <= 1 # Idle state for UART line
+    await Timer(100 * CLK_PERIOD, units='ns')
+    dut.rst_n <= 1
+    await RisingEdge(dut.clk)
 
-    dut._log.info("Test project behavior")
+    # Test data: mix of lowercase, uppercase, numbers, and special characters
+    test_string = 'abCdE1!zYmNoP9?u'
+    test_data = [ord(c) for c in test_string]
 
-    # Set the initial input values you want to test (original test)
-    dut.a.value = 13
-    dut.b.value = 10
+    # Expected data after capitalization
+    expected_data = []
+    for c in test_data:
+        if ord('a') <= c <= ord('z'):
+            expected_data.append(c - ord('a') + ord('A'))
+        else:
+            expected_data.append(c)
 
-    # Wait for one clock cycle to see the output values
-    await ClockCycles(dut.clk, 10)
+    received_data = []
 
-    # Log and assert the expected output for the initial values
-    dut._log.info(f"value of outputs are: {dut.sum.value} and {dut.carry_out.value}.")
-    assert dut.sum.value == 7 and dut.carry_out.value == 1 
+    # Start UART receiver coroutine
+    async def uart_rx_task():
+        while len(received_data) < len(expected_data):
+            data = await uart_rx(dut)
+            received_data.append(data)
+            dut._log.info(f"Received char: {chr(data)} (0x{data:02X})")
 
-    # Add random 1000 test cases
-    for i in range(1000):
-        # Generate random values for a and b within the 4-bit range (0 to 15)
-        a = random.randint(0, 15)
-        b = random.randint(0, 15)
+    rx_task = cocotb.start_soon(uart_rx_task())
 
-        # Set the random input values
-        dut.a.value = a
-        dut.b.value = b
+    # Send data to DUT
+    for idx, c in enumerate(test_data):
+        dut._log.info(f"Sending char: {chr(c)} (0x{c:02X})")
+        await uart_tx(dut, c)
+        # Wait a bit before sending the next character
+        await Timer(BAUD_PERIOD * 2, units='ns')
 
-        # Wait for 10 clock cycles to settle
-        await ClockCycles(dut.clk, 10)
+    # Wait for all data to be received
+    await rx_task
 
-        # Calculate the expected sum and carry_out
-        expected_sum = (a + b) & 0xF  # Lower 4 bits for sum
-        expected_carry_out = (a + b) >> 4  # Carry out
+    # Verify the received data
+    errors = 0
+    for idx, data in enumerate(received_data):
+        expected_char = expected_data[idx]
+        if data != expected_char:
+            dut._log.error(f"Mismatch at index {idx}: "
+                           f"Received {chr(data)} (0x{data:02X}), "
+                           f"Expected {chr(expected_char)} (0x{expected_char:02X})")
+            errors += 1
+        else:
+            dut._log.info(f"Match at index {idx}: "
+                          f"{chr(data)} (0x{data:02X})")
 
-        # Log the values for debugging
-        dut._log.info(f"Test {i + 1}: a={a}, b={b}, sum={dut.sum.value}, carry_out={dut.carry_out.value}")
-
-        # Assert to check if the output matches the expected values
-        assert dut.sum.value == expected_sum, f"Test {i + 1} failed for a={a}, b={b}: expected sum={expected_sum}, got {dut.sum.value}"
-        assert dut.carry_out.value == expected_carry_out, f"Test {i + 1} failed for a={a}, b={b}: expected carry_out={expected_carry_out}, got {dut.carry_out.value}"
-
-    dut._log.info("All tests passed.")
+    if errors == 0:
+        dut._log.info("All tests passed.")
+    else:
+        raise TestFailure(f"Test failed with {errors} errors.")
