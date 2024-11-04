@@ -1,47 +1,61 @@
-`timescale 1ns / 1ps
+module uart_fifo #(
+    parameter WIDTH = 8,
+    parameter DEPTH = 16,
+    parameter ALMOST_FULL = 12
+) (
+    // Read port
+    input wire i_rd_en,
+    output reg [WIDTH-1:0] o_rd_data,
+    output reg o_rd_valid,
 
-module fifo #(
-    parameter DEPTH = 16,      // FIFO depth
-    parameter WIDTH = 8        // Data width
-)(
-    input wire clk,
-    input wire rst_n,
-    input wire wr_en,               // Write enable
-    input wire rd_en,               // Read enable
-    input wire [WIDTH-1:0] din,     // Data input
-    output reg [WIDTH-1:0] dout,    // Data output
-    output reg full,                // FIFO full flag
-    output reg empty                // FIFO empty flag
+    // Write port
+    input wire i_wr_en,
+    input wire [WIDTH-1:0] i_wr_data,
+
+    // Status
+    output wire o_empty,
+    output wire o_full,
+    output wire o_almostfull,
+
+    input wire i_clk,
+    input wire i_rst
 );
-    reg [WIDTH-1:0] fifo_mem [0:DEPTH-1];  // FIFO memory array
-    reg [$clog2(DEPTH)-1:0] rd_ptr;        // Read pointer
-    reg [$clog2(DEPTH)-1:0] wr_ptr;        // Write pointer
-    reg [$clog2(DEPTH):0] fifo_cnt;        // Counter for FIFO elements
 
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            wr_ptr <= 0;
+    localparam ADDR_WIDTH = $clog2(DEPTH);
+
+    reg [WIDTH-1:0] mem [0:DEPTH-1];
+    reg [ADDR_WIDTH-1:0] rd_ptr = 0;
+    reg [ADDR_WIDTH-1:0] wr_ptr = 0;
+    reg [ADDR_WIDTH:0] count = 0;
+
+    assign o_empty = (count == 0);
+    assign o_full = (count == DEPTH);
+    assign o_almostfull = (count >= ALMOST_FULL);
+
+    always @(posedge i_clk or posedge i_rst) begin
+        if (i_rst) begin
             rd_ptr <= 0;
-            fifo_cnt <= 0;
-            full <= 0;
-            empty <= 1;
-            dout <= 0;
+            wr_ptr <= 0;
+            count <= 0;
+            o_rd_valid <= 0;
         end else begin
-            // Write operation
-            if (wr_en && !full) begin
-                fifo_mem[wr_ptr] <= din;
+            o_rd_valid <= 0;
+
+            // Write Operation
+            if (i_wr_en && !o_full) begin
+                mem[wr_ptr] <= i_wr_data;
                 wr_ptr <= wr_ptr + 1;
-                fifo_cnt <= fifo_cnt + 1;
+                count <= count + 1;
             end
-            // Read operation
-            if (rd_en && !empty) begin
-                dout <= fifo_mem[rd_ptr];
+
+            // Read Operation
+            if (i_rd_en && !o_empty) begin
+                o_rd_data <= mem[rd_ptr];
                 rd_ptr <= rd_ptr + 1;
-                fifo_cnt <= fifo_cnt - 1;
+                count <= count - 1;
+                o_rd_valid <= 1;
             end
-            // Update full and empty flags
-            full <= (fifo_cnt == DEPTH);
-            empty <= (fifo_cnt == 0);
         end
     end
+
 endmodule
