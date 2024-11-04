@@ -7,7 +7,7 @@ from cocotb.result import TestFailure
 CLK_FREQ = 50000000     # 50 MHz clock frequency
 BAUD_RATE = 9600        # UART baud rate
 CLK_PERIOD = 1e9 / CLK_FREQ   # Clock period in ns
-BAUD_PERIOD = int(round(1e9 / BAUD_RATE)))  # Units: nanoseconds
+BAUD_PERIOD = int(round(1e9 / BAUD_RATE))  # Units: nanoseconds
  # Baud period in ns
 
 # UART Transmission Task (send data to DUT's RX input)
