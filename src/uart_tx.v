@@ -1,48 +1,59 @@
-`timescale 1ns / 1ps
-
-module uart_tx #(
+module uart_tx
+#(
     parameter CLK_FREQ = 50000000,
-    parameter BAUD_RATE = 9600
-)(
-    input wire clk,
-    input wire rst_n,
-    input wire baud_tick,
-    input wire tx_start,
-    input wire [7:0] tx_data,
-    output reg tx_out,
-    output reg tx_ready
+    parameter BAUD = 9600
+)
+(
+    output wire o_ready,
+    output reg o_out,
+    input wire [7:0] i_data,
+    input wire i_valid,
+    input wire i_rst,
+    input wire i_clk
 );
-    // Internal signals
-    reg [3:0] bit_idx;
-    reg [9:0] shift_reg;
-    reg tx_active;
 
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            tx_out <= 1'b1;
-            tx_ready <= 1;
-            bit_idx <= 0;
-            shift_reg <= 10'b1111111111;
-            tx_active <= 0;
+    localparam integer CLKS_PER_BIT = CLK_FREQ / BAUD;
+    reg [3:0] state = 0;  // State machine
+    reg [$clog2(CLKS_PER_BIT):0] counter = 0;
+    reg [7:0] data_reg = 0;
+
+    assign o_ready = (state == 0);
+
+    always @(posedge i_clk or posedge i_rst) begin
+        if (i_rst) begin
+            state <= 0;
+            o_out <= 1;
         end else begin
-            if (tx_start && !tx_active) begin
-                // Load data into shift register and start transmission
-                shift_reg <= {1'b1, tx_data, 1'b0}; // STOP bit, DATA bits, START bit
-                tx_active <= 1;
-                bit_idx <= 0;
-                tx_ready <= 0;
-            end else if (tx_active && baud_tick) begin
-                // Transmit bits on each baud tick
-                tx_out <= shift_reg[0];
-                shift_reg <= shift_reg >> 1;
-                bit_idx <= bit_idx + 1;
-                if (bit_idx == 9) begin
-                    // Transmission complete
-                    tx_active <= 0;
-                    tx_ready <= 1;
-                    tx_out <= 1'b1; // Set TX back to idle state (high)
+            case (state)
+                0: begin
+                    o_out <= 1;
+                    if (i_valid) begin
+                        data_reg <= i_data;
+                        state <= 1;
+                        counter <= CLKS_PER_BIT - 1;
+                        o_out <= 0;  // Start bit
+                    end
                 end
-            end
+                1,2,3,4,5,6,7,8: begin  // Transmit data bits
+                    if (counter == 0) begin
+                        o_out <= data_reg[state - 1];
+                        counter <= CLKS_PER_BIT - 1;
+                        state <= state + 1;
+                    end else begin
+                        counter <= counter - 1;
+                    end
+                end
+                9: begin  // Stop bit
+                    if (counter == 0) begin
+                        o_out <= 1;
+                        state <= 0;
+                    end else begin
+                        counter <= counter - 1;
+                    end
+                end
+                default: state <= 0;
+            endcase
         end
     end
+
 endmodule
