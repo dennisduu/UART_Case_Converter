@@ -1,3 +1,6 @@
+`default_nettype none
+
+
 module tt_um_uart_fifo (
     input  wire [7:0] ui_in,    // Dedicated inputs (unused in this case)
     output wire [7:0] uo_out,   // Dedicated outputs (TX and RX output)
