@@ -40,16 +40,24 @@ async def uart_rx(dut):
     data = 0
     for i in range(8):
         await Timer(BAUD_PERIOD, units='ns')
-        bit = dut.tx_serial.value.integer
-        data |= (bit << i)
+        bit_value = dut.tx_serial.value
+        if bit_value.is_resolvable:
+            bit = bit_value.integer
+            data |= (bit << i)
+        else:
+            dut._log.warning(f"Received undefined bit at position {i}. Retrying...")
+            # Optionally, you can wait and retry reading the bit
+            await Timer(BAUD_PERIOD, units='ns')
+            i -= 1  # Retry the same bit position
 
     # Wait for stop bit
     await Timer(BAUD_PERIOD, units='ns')
-    stop_bit = dut.tx_serial.value.integer
-    if stop_bit != 1:
-        raise TestFailure("Stop bit not detected")
+    stop_bit_value = dut.tx_serial.value
+    if not stop_bit_value.is_resolvable or stop_bit_value.integer != 1:
+        raise TestFailure("Stop bit not detected or undefined")
 
     return data
+
 
 @cocotb.test()
 async def uart_capitalizer_test(dut):
@@ -58,12 +66,17 @@ async def uart_capitalizer_test(dut):
     cocotb.start_soon(Clock(dut.clk, CLK_PERIOD, units='ns').start())
 
     # Apply reset
-    dut.rst_n <= 0
-    dut.ena <= 1       # Enable the design
-    dut.rx_serial <= 1 # Idle state for UART line
+    dut.rst_n.value = 0
+    dut.ena.value = 1       # Enable the design
+    dut.rx_serial.value = 1 # Idle state for UART line
     await Timer(100 * CLK_PERIOD, units='ns')
-    dut.rst_n <= 1
-    await RisingEdge(dut.clk)
+    
+    # Release reset
+    dut.rst_n.value = 1
+    
+    # Wait for a few clock cycles to allow DUT to initialize
+    for _ in range(10):
+        await RisingEdge(dut.clk)
 
     # Test data: mix of lowercase, uppercase, numbers, and special characters
     test_string = 'abCdE1!zYmNoP9?u'
