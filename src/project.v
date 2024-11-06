@@ -44,7 +44,7 @@ module tt_um_uart_fifo (
 
 
 
-        // Instantiate Baud Generator
+    // Instantiate Baud Generator
     baud_generator #(
         .CLK_FREQ(CLK_FREQ),
         .BAUD(BAUD_RATE)
