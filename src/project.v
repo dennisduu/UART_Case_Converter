@@ -4,7 +4,7 @@
 module tt_um_uart_fifo (
     input  wire [7:0] ui_in,    // Dedicated inputs (unused in this case)
     output wire [7:0] uo_out,   // Dedicated outputs (TX and RX output)
-    input  wire [7:0] uio_in,   // IOs: Input path (RX input)
+    input  wire [7:0] uio_in,   // IOs: Input path 
     output wire [7:0] uio_out,  // IOs: Output path (unused)
     output wire [7:0] uio_oe,   // IOs: Enable path (unused)
     input  wire       ena,      // Always 1 when the design is powered
@@ -39,6 +39,9 @@ module tt_um_uart_fifo (
 
     // Character conversion logic
     reg [7:0] processed_data;
+
+    wire baud_tick;  // Declare baud_tick signal
+
 
 
         // Instantiate Baud Generator
