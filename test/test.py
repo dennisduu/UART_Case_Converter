@@ -38,23 +38,26 @@ async def uart_rx(dut):
 
     # Read data bits
     data = 0
+    retries = 3  # Maximum retries per bit
+
+    retries = 3  # Maximum retries per bit
     for i in range(8):
-        await Timer(BAUD_PERIOD, units='ns')
-        bit_value = dut.tx_serial.value
-        if bit_value.is_resolvable:
-            bit = bit_value.integer
-            data |= (bit << i)
-        else:
-            dut._log.warning(f"Received undefined bit at position {i}. Retrying...")
-            # Optionally, you can wait and retry reading the bit
+        for attempt in range(retries):
             await Timer(BAUD_PERIOD, units='ns')
-            i -= 1  # Retry the same bit position
+            bit_value = dut.tx_serial.value
+            if bit_value.is_resolvable:
+                data |= (bit_value.integer << i)
+                break
+            elif attempt == retries - 1:
+                dut._log.error(f"Received undefined bit at position {i} after {retries} attempts.")
+                raise TestFailure("Unable to resolve bit.")
 
     # Wait for stop bit
-    await Timer(BAUD_PERIOD, units='ns')
+    await Timer(BAUD_PERIOD / 2, units='ns')
     stop_bit_value = dut.tx_serial.value
     if not stop_bit_value.is_resolvable or stop_bit_value.integer != 1:
-        raise TestFailure("Stop bit not detected or undefined")
+        raise TestFailure("Stop bit not detected or undefined.")
+
 
     return data
 
@@ -68,7 +71,9 @@ async def uart_capitalizer_test(dut):
     # Apply reset
     dut.rst_n.value = 0
     dut.ena.value = 1       # Enable the design
-    dut.rx_serial.value = 1 # Idle state for UART line
+    dut.rx_serial.value = bit
+    dut.rx_serial.value = 1
+
     await Timer(100 * CLK_PERIOD, units='ns')
     
     # Release reset
