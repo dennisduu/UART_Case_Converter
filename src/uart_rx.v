@@ -14,23 +14,54 @@ module uart_rx (
             o_valid <= 0;
         end else if (baud_tick) begin
             case (state)
-                0: begin
+                4'd0: begin
                     o_valid <= 0;
                     if (i_in == 0) begin  // Start bit detected
-                        state <= 1;
+                        state <= 4'd1;
                     end
                 end
-                1: o_data[0] <= i_in; state <= 2;
-                2: o_data[1] <= i_in; state <= 3;
-                3: o_data[2] <= i_in; state <= 4;
-                4: o_data[3] <= i_in; state <= 5;
-                5: o_data[4] <= i_in; state <= 6;
-                6: o_data[5] <= i_in; state <= 7;
-                7: o_data[6] <= i_in; state <= 8;
-                8: o_data[7] <= i_in; state <= 9;
-                9: begin
+                4'd1: begin
+                    o_data[0] <= i_in;
+                    state <= 4'd2;
+                end
+                4'd2: begin
+                    o_data[1] <= i_in;
+                    state <= 4'd3;
+                end
+                4'd3: begin
+                    o_data[2] <= i_in;
+                    state <= 4'd4;
+                end
+                4'd4: begin
+                    o_data[3] <= i_in;
+                    state <= 4'd5;
+                end
+                4'd5: begin
+                    o_data[4] <= i_in;
+                    state <= 4'd6;
+                end
+                4'd6: begin
+                    o_data[5] <= i_in;
+                    state <= 4'd7;
+                end
+                4'd7: begin
+                    o_data[6] <= i_in;
+                    state <= 4'd8;
+                end
+                4'd8: begin
+                    o_data[7] <= i_in;
+                    state <= 4'd9;
+                end
+                4'd9: begin
+                    // Stop bit (optional checking can be added here)
+                    state <= 4'd10;
+                end
+                4'd10: begin
                     o_valid <= 1;  // Data is valid
-                    state <= 0;
+                    state <= 4'd0;
+                end
+                default: begin
+                    state <= 4'd0;
                 end
             endcase
         end

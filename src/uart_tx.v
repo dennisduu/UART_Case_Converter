@@ -14,29 +14,56 @@ module uart_tx (
 
     always @(posedge i_clk or posedge i_rst) begin
         if (i_rst) begin
-            state <= 0;
+            state <= 4'd0;
             o_out <= 1;
         end else if (baud_tick) begin
             case (state)
-                0: begin
+                4'd0: begin
                     o_out <= 1;
                     if (i_valid) begin
                         data_reg <= i_data;
-                        state <= 1;
                         o_out <= 0;  // Start bit
+                        state <= 4'd1;
                     end
                 end
-                1: o_out <= data_reg[0]; state <= 2;
-                2: o_out <= data_reg[1]; state <= 3;
-                3: o_out <= data_reg[2]; state <= 4;
-                4: o_out <= data_reg[3]; state <= 5;
-                5: o_out <= data_reg[4]; state <= 6;
-                6: o_out <= data_reg[5]; state <= 7;
-                7: o_out <= data_reg[6]; state <= 8;
-                8: o_out <= data_reg[7]; state <= 9;
-                9: begin
+                4'd1: begin
+                    o_out <= data_reg[0];
+                    state <= 4'd2;
+                end
+                4'd2: begin
+                    o_out <= data_reg[1];
+                    state <= 4'd3;
+                end
+                4'd3: begin
+                    o_out <= data_reg[2];
+                    state <= 4'd4;
+                end
+                4'd4: begin
+                    o_out <= data_reg[3];
+                    state <= 4'd5;
+                end
+                4'd5: begin
+                    o_out <= data_reg[4];
+                    state <= 4'd6;
+                end
+                4'd6: begin
+                    o_out <= data_reg[5];
+                    state <= 4'd7;
+                end
+                4'd7: begin
+                    o_out <= data_reg[6];
+                    state <= 4'd8;
+                end
+                4'd8: begin
+                    o_out <= data_reg[7];
+                    state <= 4'd9;
+                end
+                4'd9: begin
                     o_out <= 1;  // Stop bit
-                    state <= 0;
+                    state <= 4'd0;
+                end
+                default: begin
+                    state <= 4'd0;
                 end
             endcase
         end
