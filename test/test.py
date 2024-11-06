@@ -4,7 +4,7 @@ from cocotb.triggers import RisingEdge, FallingEdge, Timer, ReadOnly
 from cocotb.result import TestFailure
 
 # UART parameters
-CLK_FREQ = 50000000     # 50 MHz clock frequency
+CLK_FREQ = 12000000     # 50 MHz clock frequency
 BAUD_RATE = 9600        # UART baud rate
 CLK_PERIOD = 1e9 / CLK_FREQ   # Clock period in ns
 BAUD_PERIOD = int(round(1e9 / BAUD_RATE))  # Units: nanoseconds
