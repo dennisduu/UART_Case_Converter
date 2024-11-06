@@ -51,27 +51,23 @@ module tt_um_uart_fifo (
         .i_rst(~rst_n)
     );
 
-    // Instantiate UART Receiver
-    uart_rx #(
-        .CLK_FREQ(CLK_FREQ),
-        .BAUD(BAUD_RATE)
-    ) uart_rx_inst (
+    // Instantiate UART Receiver with baud tick
+    uart_rx uart_rx_inst (
         .o_data(urx_data),
         .o_valid(urx_valid),
         .i_in(rx),
+        .baud_tick(baud_tick),
         .i_rst(~rst_n),
         .i_clk(clk)
     );
 
-    // Instantiate UART Transmitter
-    uart_tx #(
-        .CLK_FREQ(CLK_FREQ),
-        .BAUD(BAUD_RATE)
-    ) uart_tx_inst (
+    // Instantiate UART Transmitter with baud tick
+    uart_tx uart_tx_inst (
         .o_ready(utx_ready),
         .o_out(tx),
         .i_data(utx_data),
         .i_valid(utx_valid),
+        .baud_tick(baud_tick),
         .i_rst(~rst_n),
         .i_clk(clk)
     );
