@@ -1,7 +1,7 @@
 module uart_fifo #(
     parameter WIDTH = 8,
-    parameter DEPTH = 16,
-    parameter ALMOST_FULL = 12
+    parameter DEPTH = 4,
+    parameter ALMOST_FULL = 3
 ) (
     // Read port
     input wire i_rd_en,
@@ -32,27 +32,23 @@ module uart_fifo #(
     assign o_full = (count == DEPTH);
     assign o_almostfull = (count >= ALMOST_FULL);
 
-    // Write Operation
     always @(posedge i_clk or posedge i_rst) begin
         if (i_rst) begin
+            rd_ptr <= 0;
             wr_ptr <= 0;
             count <= 0;
+            o_rd_valid <= 0;
         end else begin
+            o_rd_valid <= 0;
+
+            // Write Operation
             if (i_wr_en && !o_full) begin
                 mem[wr_ptr] <= i_wr_data;
                 wr_ptr <= wr_ptr + 1;
                 count <= count + 1;
             end
-        end
-    end
-    
-    // Read Operation
-    always @(posedge i_clk or posedge i_rst) begin
-        if (i_rst) begin
-            rd_ptr <= 0;
-            o_rd_valid <= 0;
-        end else begin
-            o_rd_valid <= 0;
+
+            // Read Operation
             if (i_rd_en && !o_empty) begin
                 o_rd_data <= mem[rd_ptr];
                 rd_ptr <= rd_ptr + 1;
@@ -61,6 +57,5 @@ module uart_fifo #(
             end
         end
     end
-
 
 endmodule
