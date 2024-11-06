@@ -1,7 +1,7 @@
 module uart_fifo #(
     parameter WIDTH = 8,
-    parameter DEPTH = 16,
-    parameter ALMOST_FULL = 12
+    parameter DEPTH = 4,
+    parameter ALMOST_FULL = 3
 ) (
     // Read port
     input wire i_rd_en,
