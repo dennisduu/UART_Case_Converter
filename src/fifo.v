@@ -23,39 +23,32 @@ module uart_fifo #(
 
     localparam ADDR_WIDTH = $clog2(DEPTH);
 
-    reg [WIDTH-1:0] mem [0:DEPTH-1];
-    reg [ADDR_WIDTH-1:0] rd_ptr = 0;
-    reg [ADDR_WIDTH-1:0] wr_ptr = 0;
-    reg [ADDR_WIDTH:0] count = 0;
-
-    assign o_empty = (count == 0);
-    assign o_full = (count == DEPTH);
-    assign o_almostfull = (count >= ALMOST_FULL);
+    reg [WIDTH-1:0] shift_reg [0:DEPTH-1];
 
     always @(posedge i_clk or posedge i_rst) begin
         if (i_rst) begin
-            rd_ptr <= 0;
-            wr_ptr <= 0;
             count <= 0;
             o_rd_valid <= 0;
         end else begin
             o_rd_valid <= 0;
-
             // Write Operation
             if (i_wr_en && !o_full) begin
-                mem[wr_ptr] <= i_wr_data;
-                wr_ptr <= wr_ptr + 1;
+                shift_reg[count] <= i_wr_data;
                 count <= count + 1;
             end
-
             // Read Operation
             if (i_rd_en && !o_empty) begin
-                o_rd_data <= mem[rd_ptr];
-                rd_ptr <= rd_ptr + 1;
+                o_rd_data <= shift_reg[0];
+                // Shift data
+                integer i;
+                for (i = 0; i < DEPTH - 1; i = i + 1) begin
+                    shift_reg[i] <= shift_reg[i + 1];
+                end
                 count <= count - 1;
                 o_rd_valid <= 1;
             end
         end
     end
+
 
 endmodule
