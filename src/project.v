@@ -4,7 +4,7 @@
 module tt_um_uart_fifo (
     input  wire [7:0] ui_in,    // Dedicated inputs (unused in this case)
     output wire [7:0] uo_out,   // Dedicated outputs (TX and RX output)
-    input  wire [7:0] uio_in,   // IOs: Input path 
+    input  wire [7:0] uio_in,   // IOs: Input path (RX input)
     output wire [7:0] uio_out,  // IOs: Output path (unused)
     output wire [7:0] uio_oe,   // IOs: Enable path (unused)
     input  wire       ena,      // Always 1 when the design is powered
@@ -13,7 +13,7 @@ module tt_um_uart_fifo (
 );
 
     // Parameters
-    parameter CLK_FREQ = 12000000;  // System clock frequency (12 MHz)
+    parameter CLK_FREQ = 12000000;  // System clock frequency (50 MHz)
     parameter BAUD_RATE = 9600;     // UART baud rate
 
     // Internal signals
@@ -40,37 +40,27 @@ module tt_um_uart_fifo (
     // Character conversion logic
     reg [7:0] processed_data;
 
-    wire baud_tick;  // Declare baud_tick signal
-
-
-
-    // Instantiate Baud Generator
-    baud_generator #(
+    // Instantiate UART Receiver
+    uart_rx #(
         .CLK_FREQ(CLK_FREQ),
         .BAUD(BAUD_RATE)
-    ) baud_gen_inst (
-        .baud_tick(baud_tick),
-        .i_clk(clk),
-        .i_rst(~rst_n)
-    );
-
-    // Instantiate UART Receiver with baud tick
-    uart_rx uart_rx_inst (
+    ) uart_rx_inst (
         .o_data(urx_data),
         .o_valid(urx_valid),
         .i_in(rx),
-        .baud_tick(baud_tick),
         .i_rst(~rst_n),
         .i_clk(clk)
     );
 
-    // Instantiate UART Transmitter with baud tick
-    uart_tx uart_tx_inst (
+    // Instantiate UART Transmitter
+    uart_tx #(
+        .CLK_FREQ(CLK_FREQ),
+        .BAUD(BAUD_RATE)
+    ) uart_tx_inst (
         .o_ready(utx_ready),
         .o_out(tx),
         .i_data(utx_data),
         .i_valid(utx_valid),
-        .baud_tick(baud_tick),
         .i_rst(~rst_n),
         .i_clk(clk)
     );
