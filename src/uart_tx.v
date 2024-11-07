@@ -1,6 +1,6 @@
 module uart_tx
 #(
-    parameter CLK_FREQ = 12000000,
+    parameter CLK_FREQ = 50000000,
     parameter BAUD = 9600
 )
 (
