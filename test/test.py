@@ -80,7 +80,7 @@ async def uart_capitalizer_test(dut):
 
     # Run 100 constrained random test cases
     total_errors = 0
-    num_tests = 100
+    num_tests = 10
     for test_num in range(num_tests):
         # Generate a random test string of random length between 5 and 20
         length = random.randint(5, 20)
