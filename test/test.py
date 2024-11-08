@@ -1,14 +1,15 @@
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import RisingEdge, FallingEdge, Timer, ReadOnly
+from cocotb.triggers import RisingEdge, FallingEdge, Timer
 from cocotb.result import TestFailure
+import random
+import string
 
 # UART parameters
-CLK_FREQ = 10000000     # 50 MHz clock frequency
+CLK_FREQ = 10000000     # 10 MHz clock frequency
 BAUD_RATE = 9600        # UART baud rate
 CLK_PERIOD = 1e9 / CLK_FREQ   # Clock period in ns
-BAUD_PERIOD = int(round(1e9 / BAUD_RATE))  # Units: nanoseconds
- # Baud period in ns
+BAUD_PERIOD = int(round(1e9 / BAUD_RATE))  # Baud period in ns
 
 # UART Transmission Task (send data to DUT's RX input)
 async def uart_tx(dut, data):
@@ -58,10 +59,9 @@ async def uart_rx(dut):
 
     return data
 
-
 @cocotb.test()
 async def uart_capitalizer_test(dut):
-    """Test the UART capitalizer design."""
+    """Test the UART capitalizer design with 100 constrained random test cases."""
     # Generate clock
     cocotb.start_soon(Clock(dut.clk, CLK_PERIOD, units='ns').start())
 
@@ -70,61 +70,76 @@ async def uart_capitalizer_test(dut):
     dut.ena.value = 1       # Enable the design
     dut.rx_serial.value = 1 # Idle state for UART line
     await Timer(100 * CLK_PERIOD, units='ns')
-    
+
     # Release reset
     dut.rst_n.value = 1
-    
+
     # Wait for a few clock cycles to allow DUT to initialize
     for _ in range(10):
         await RisingEdge(dut.clk)
 
-    # Test data: mix of lowercase, uppercase, numbers, and special characters
-    test_string = 'abCdE1!zYmNoP9?u'
-    test_data = [ord(c) for c in test_string]
+    # Run 100 constrained random test cases
+    total_errors = 0
+    num_tests = 100
+    for test_num in range(num_tests):
+        # Generate a random test string of random length between 5 and 20
+        length = random.randint(5, 20)
+        characters = string.ascii_letters + string.digits + string.punctuation
+        test_string = ''.join(random.choice(characters) for _ in range(length))
+        test_data = [ord(c) for c in test_string]
 
-    # Expected data after capitalization
-    expected_data = []
-    for c in test_data:
-        if ord('a') <= c <= ord('z'):
-            expected_data.append(c - ord('a') + ord('A'))
+        # Expected data after capitalization
+        expected_data = []
+        for c in test_data:
+            if ord('a') <= c <= ord('z'):
+                expected_data.append(c - ord('a') + ord('A'))
+            else:
+                expected_data.append(c)
+
+        received_data = []
+
+        # Start UART receiver coroutine
+        async def uart_rx_task():
+            while len(received_data) < len(expected_data):
+                data = await uart_rx(dut)
+                received_data.append(data)
+                dut._log.info(f"Received char: {chr(data)} (0x{data:02X})")
+
+        rx_task = cocotb.start_soon(uart_rx_task())
+
+        # Send data to DUT
+        for idx, c in enumerate(test_data):
+            dut._log.info(f"Test {test_num+1}: Sending char: {chr(c)} (0x{c:02X})")
+            await uart_tx(dut, c)
+            # Wait a bit before sending the next character
+            await Timer(BAUD_PERIOD * 2, units='ns')
+
+        # Wait for all data to be received
+        await rx_task
+
+        # Verify the received data
+        errors = 0
+        for idx, data in enumerate(received_data):
+            expected_char = expected_data[idx]
+            if data != expected_char:
+                dut._log.error(f"Test {test_num+1}: Mismatch at index {idx}: "
+                               f"Received {chr(data)} (0x{data:02X}), "
+                               f"Expected {chr(expected_char)} (0x{expected_char:02X})")
+                errors += 1
+            else:
+                dut._log.info(f"Test {test_num+1}: Match at index {idx}: "
+                              f"{chr(data)} (0x{data:02X})")
+
+        if errors == 0:
+            dut._log.info(f"Test {test_num+1}/{num_tests} passed.")
         else:
-            expected_data.append(c)
+            dut._log.error(f"Test {test_num+1}/{num_tests} failed with {errors} errors.")
+            total_errors += errors
 
-    received_data = []
+        # Optional: Add a small delay before the next test
+        await Timer(1000, units='ns')
 
-    # Start UART receiver coroutine
-    async def uart_rx_task():
-        while len(received_data) < len(expected_data):
-            data = await uart_rx(dut)
-            received_data.append(data)
-            dut._log.info(f"Received char: {chr(data)} (0x{data:02X})")
-
-    rx_task = cocotb.start_soon(uart_rx_task())
-
-    # Send data to DUT
-    for idx, c in enumerate(test_data):
-        dut._log.info(f"Sending char: {chr(c)} (0x{c:02X})")
-        await uart_tx(dut, c)
-        # Wait a bit before sending the next character
-        await Timer(BAUD_PERIOD * 2, units='ns')
-
-    # Wait for all data to be received
-    await rx_task
-
-    # Verify the received data
-    errors = 0
-    for idx, data in enumerate(received_data):
-        expected_char = expected_data[idx]
-        if data != expected_char:
-            dut._log.error(f"Mismatch at index {idx}: "
-                           f"Received {chr(data)} (0x{data:02X}), "
-                           f"Expected {chr(expected_char)} (0x{expected_char:02X})")
-            errors += 1
-        else:
-            dut._log.info(f"Match at index {idx}: "
-                          f"{chr(data)} (0x{data:02X})")
-
-    if errors == 0:
-        dut._log.info("All tests passed.")
+    if total_errors == 0:
+        dut._log.info(f"All {num_tests} tests passed successfully.")
     else:
-        raise TestFailure(f"Test failed with {errors} errors.")
+        raise TestFailure(f"Total errors: {total_errors} across {num_tests} tests.")
