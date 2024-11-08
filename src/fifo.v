@@ -1,6 +1,6 @@
 module uart_fifo #(
     parameter WIDTH = 8,
-    parameter DEPTH = 16,
+    parameter DEPTH = 16
 ) (
     // Read port
     input wire i_rd_en,
