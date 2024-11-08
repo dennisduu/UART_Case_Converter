@@ -69,7 +69,6 @@ module tt_um_uart_fifo (
     uart_fifo #(
         .WIDTH(8),
         .DEPTH(16),
-        .ALMOST_FULL(12)
     ) fifo_inst (
         .i_rd_en(fifo_rd_en),
         .o_rd_data(fifo_dout),
@@ -78,7 +77,6 @@ module tt_um_uart_fifo (
         .i_wr_data(processed_data),
         .o_empty(fifo_empty),
         .o_full(fifo_full),
-        .o_almostfull(),
         .i_clk(clk),
         .i_rst(~rst_n)
     );
