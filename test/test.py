@@ -6,8 +6,8 @@ import random
 import string
 
 # UART parameters
-CLK_FREQ = 50000000     # 10 MHz clock frequency
-BAUD_RATE = 115200        # UART baud rate
+CLK_FREQ = 10000000     # 10 MHz clock frequency
+BAUD_RATE = 9600        # UART baud rate
 CLK_PERIOD = 1e9 / CLK_FREQ   # Clock period in ns
 BAUD_PERIOD = int(round(1e9 / BAUD_RATE))  # Baud period in ns
 
