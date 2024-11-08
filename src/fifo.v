@@ -1,7 +1,6 @@
 module uart_fifo #(
     parameter WIDTH = 8,
     parameter DEPTH = 16,
-    parameter ALMOST_FULL = 12
 ) (
     // Read port
     input wire i_rd_en,
@@ -15,7 +14,6 @@ module uart_fifo #(
     // Status
     output wire o_empty,
     output wire o_full,
-    output wire o_almostfull,
 
     input wire i_clk,
     input wire i_rst
@@ -30,8 +28,7 @@ module uart_fifo #(
 
     assign o_empty = (count == 0);
     assign o_full = (count == DEPTH);
-    assign o_almostfull = (count >= ALMOST_FULL);
-
+    
     always @(posedge i_clk or posedge i_rst) begin
         if (i_rst) begin
             rd_ptr <= 0;
