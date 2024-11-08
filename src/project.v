@@ -13,7 +13,7 @@ module tt_um_uart_fifo (
 );
 
     // Parameters
-    parameter CLK_FREQ = 10000000;  // System clock frequency (50 MHz)
+    parameter CLK_FREQ = 50000000;  // System clock frequency (50 MHz)
     parameter BAUD_RATE = 9600;     // UART baud rate
 
     // Internal signals
