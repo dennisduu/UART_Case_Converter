@@ -68,7 +68,7 @@ module tt_um_uart_fifo (
     // Instantiate FIFO
     uart_fifo #(
         .WIDTH(8),
-        .DEPTH(16),
+        .DEPTH(16)
     ) fifo_inst (
         .i_rd_en(fifo_rd_en),
         .o_rd_data(fifo_dout),
